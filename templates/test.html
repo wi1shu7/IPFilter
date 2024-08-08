@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>示例</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/message.min.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="mb-4">示例</h1>
+    {% for log in request_log %}
+    <div class="card mb-3">
+        <div class="card-header">
+            <h2>Headers</h2>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <th>Header</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for header, value in log.headers.items() %}
+                <tr>
+                    <td>{{ header }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-header">
+            <h2>Body</h2>
+        </div>
+        <div class="card-body">
+            <pre>{{ log.body }}</pre>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script src="{{ url_for('static', filename='js/jquery-3.5.1.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/message.min.js') }}"></script>
+</body>
+</html>
