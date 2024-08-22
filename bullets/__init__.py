@@ -19,21 +19,23 @@ class _Bullets(metaclass=SingletonMeta):
     subclasses = {}
 
     def __init__(self):
-        self.discover_subclasses()
+        self.__obj_id = 0
+        self.__discover_subclasses()
 
-    def discover_subclasses(self):
+    @property
+    def __get_obj_id(self):
+        self.__obj_id += 1
+        return self.__obj_id
+
+    def __discover_subclasses(self):
         for filename in os.listdir(os.path.dirname(os.path.abspath(__file__))):
-            # 过滤出 Python 文件
             if filename.endswith('.py') and filename != os.path.basename(__file__):
                 module_name = filename[:-3]
 
                 module = importlib.import_module("bullets." + module_name)
-                i = 1
-                # 获取模块中的所有类
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if issubclass(obj, _BaseRequestClass) and obj != _BaseRequestClass:
-                        obj.ID = i
-                        i += 1
+                        obj.ID = self.__get_obj_id
                         self.subclasses.update({obj.ID: obj()})
 
     def get_subclasses_name(self):

@@ -2,6 +2,7 @@ import base64
 import ipaddress
 import json
 import os
+import chardet
 
 import asyncio
 import sys
@@ -17,7 +18,7 @@ class _utils(metaclass=SingletonMeta):
         self.ipaddress_black_list = []
         self.load_ips()
 
-        self.config = {}
+        self.config: dict = ...
         self.load_config()
 
         self.client = httpx.AsyncClient(verify=False)
@@ -28,7 +29,6 @@ class _utils(metaclass=SingletonMeta):
     def __calculate_ips(self, cidr):
         network = ipaddress.ip_network(cidr, strict=False)
         ip_list = [str(ip) for ip in network.hosts()]
-
         return ip_list
 
     @staticmethod
@@ -55,7 +55,12 @@ class _utils(metaclass=SingletonMeta):
                 file_path = os.path.join(list_path, filename)
 
                 if os.path.isfile(file_path):
-                    with open(file_path, 'r', encoding='utf-8') as file:
+                    with open(file_path, 'rb') as file:
+                        raw_data = file.read()
+                        result = chardet.detect(raw_data)
+                        encoding = result['encoding']
+
+                    with open(file_path, 'r', encoding=encoding) as file:
                         for line in file:
                             ipaddress_one_list = self.__calculate_ips(line.strip())
                             for ip in ipaddress_one_list:
@@ -97,12 +102,13 @@ class _utils(metaclass=SingletonMeta):
         else:
             return {'status': 0}
 
-    async def filter_ip_list(self, ip_list, qax_ti_key=None):
+    async def filter_ip_list(self, ip_list, qax_ti_key=None, weibu_ti_key=None):
         result = {ip: {
             "whiteIp": ip in self.ipaddress_white_list,
             "blackIp": ip in self.ipaddress_black_list,
             "ipData": {},
-            "qaxTi": {}
+            "qaxTi": {},
+            "weibuTi": {}
         } for ip in ip_list}
 
         if qax_ti_key:
@@ -141,17 +147,49 @@ class _app:
         self.api_bp = Blueprint('api', __name__)
 
         self.__blueprint_register()
+        self.app.register_blueprint(self.api_bp, url_prefix='/api')
+
+        @self.app.template_filter('show_invisible')
+        def show_invisible(value):
+            invisible_chars = {
+                ' ': '<空格>',
+                '\t': '<制表符>',
+                '\n': '<换行符>',
+                '\r': '<回车符>',
+                '\x0b': '<垂直制表符>',
+                '\x0c': '<换页符>'
+            }
+            return ''.join(invisible_chars.get(char, char) for char in value)
 
         @self.app.route('/')
         async def home():
-            qax_ti_key = request.cookies.get('qax_ti_key', None)
-            carry_data = request.cookies.get('carry_data', None)
+            ti_key_base64 = request.cookies.get('ti_key', '{}')
+            ti_key = base64.b64decode(ti_key_base64.encode('utf-8')).decode('utf-8')
+            try:
+                api_keys = json.loads(ti_key) if ti_key else {
+                    'qax': '',
+                    'weibu': ''
+                }
+            except json.JSONDecodeError:
+                api_keys = {
+                    'qax': '',
+                    'weibu': ''
+                }
+            try:
+                qax_ti_key = api_keys.get('qax', '')
+                weibu_api_key = api_keys.get('weibu', '')
+            except AttributeError:
+                qax_ti_key = weibu_api_key = ''
+
+            carry_data_b64 = request.cookies.get('carry_data', "")
+            carry_data = base64.b64decode(carry_data_b64.encode('utf-8')).decode('utf-8') if carry_data_b64 else ""
 
             bk_lock = self.utils.config['bk_lock']
             bk_url = url_for('static', filename='bk3.jpg') if bk_lock else self.utils.config['bk_url']
 
             return await render_template("index.html",
                                          qax_ti_key=qax_ti_key,
+                                         weibu_api_key=weibu_api_key,
                                          carry_data=carry_data,
                                          bk_url=bk_url,
                                          bk_lock=bk_lock,
@@ -163,16 +201,29 @@ class _app:
 
         @self.api_bp.route("/process_ips", methods=['POST'])
         async def api_process_ips():
-            qax_ti_key = request.headers.get('x-qax-key', None)
+            api_keys = request.headers.get('x-api-keys', '{}')
+            api_keys = json.loads(api_keys)
+
+            qax_ti_key = api_keys.get('qax', None)
+            weibu_ti_key = api_keys.get('weibu', None)
 
             data = await request.get_json()
             bs4_ips = data.get("data", None)
+
+            decollator = data.get("decollator", None)
+            if decollator:
+                if not decollator == self.utils.config['decollator']:
+                    self.utils.config['decollator'] = decollator
+                    self.utils.save_config()
+            else:
+                decollator = self.utils.config['decollator']
+
             if bs4_ips:
                 ip_input = base64.b64decode(bs4_ips).decode('utf-8')
                 ip_lines = [ip.strip() for ip in ip_input.split('\n') if ip.strip()]
                 ips_set = set()
                 for ip_line in ip_lines:
-                    for ip in ip_line.split(','):
+                    for ip in ip_line.split(decollator):
                         if self.utils.is_valid_ip(ip):
                             ips_set.add(ip.strip())
                         else:
@@ -180,13 +231,11 @@ class _app:
 
                 ips = list(ips_set)
 
-                ips_filter_result = await self.utils.filter_ip_list(ips, qax_ti_key)
+                ips_filter_result = await self.utils.filter_ip_list(ips, qax_ti_key=qax_ti_key, weibu_ti_key=weibu_ti_key)
 
                 response = await make_response(self.utils.get_return_templates(1, data=ips_filter_result))
-                if qax_ti_key:
-                    response.set_cookie('qax_ti_key', qax_ti_key)
-                else:
-                    response.set_cookie('qax_ti_key', '', expires=0)
+
+                response.set_cookie('ti_key', base64.b64encode(json.dumps(api_keys).encode('utf-8')).decode('utf-8'), httponly=True)
 
                 return response
 
@@ -226,18 +275,28 @@ class _app:
                 response_bullet
             ))
             if bullet_info['data']:
-                response.set_cookie("carry_data", json.dumps(bullet_info['data']))
+                response.set_cookie("carry_data",
+                                    base64.b64encode(
+                                        json.dumps(bullet_info['data']).encode('utf-8')
+                                    ).decode('utf-8'), httponly=True)
             else:
                 response.set_cookie("carry_data", "", expires=0)
             return response
 
-        self.app.register_blueprint(self.api_bp, url_prefix='/api')
+        @self.api_bp.errorhandler(400)
+        async def bad_request_400(e):
+            return self.utils.get_return_templates(0, error=f"400：{e}")
+
+        @self.api_bp.errorhandler(500)
+        async def bad_request_500(e):
+            return self.utils.get_return_templates(0, error=f"500：{e}")
 
     def run(self, debug=False, host='127.0.0.1', port=60053):
         self.app.run(debug=debug, host=host, port=port)
 
 if __name__ == '__main__':
-    _app().run(debug=True)
+    # _app().run(debug=True)
+    _app().run()
 
 
 

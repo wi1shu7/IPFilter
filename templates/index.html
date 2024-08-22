@@ -12,6 +12,7 @@
             background: linear-gradient(rgba(252,252,252,.85),rgba(252,252,252,.85)),url("{{ bk_url }}") no-repeat center center;
             background-size: cover;
             background-attachment: fixed;
+            font-family: 'SimSun', '宋体', 'Arial', sans-serif;
         }
         .indent-1 {
             margin-left: 20px;
@@ -166,6 +167,7 @@
             }
         }
         .wi1shu-text{
+            color: black;
              transition: 0.5s;
         }
         .wi1shu-text:focus,.wi1shu-text:hover {
@@ -177,45 +179,70 @@
 </head>
 <body>
     <div class="container-xl mt-2">
-        <div class="wi1shu-box text-center font-italic mb-4" style="font-size: 2rem; font-family: Raleway,RalewayOffline,sans-serif">
+        <div class="wi1shu-box text-center font-italic mb-4" style="font-size: 2rem;">
             <span class="wi1shu-line"></span>
             <span class="wi1shu-line"></span>
             <span class="wi1shu-line"></span>
             <span class="wi1shu-line"></span>
-            <div class="wi1shu-content"><p class="wi1shu-text">Power By: wi1shu</p></div>
+            <div class="wi1shu-content"><a href="https://github.com/wi1shu7/IPFilter" Target="_blank" class="wi1shu-text">Power By: wi1shu</a></div>
         </div>
         <div class="row">
 
             <div class="col-12 mb-4">
                 <div class="d-flex align-items-center mb-2">
-                    <button class="btn btn-primary" onclick="refreshIps()">刷新白(黑)名单ip</button>
+                    <button class="btn btn-primary" style="width: 160px;" onclick="refreshIps()">刷新白(黑)名单ip</button>
                     <span class="ml-3">白(黑)名单请放在<strong>data/white(black)</strong>目录下，可多文件，示例请自行查看</span>
                 </div>
                 <div class="d-flex align-items-center mb-2">
-                    <button class="btn btn-success" onclick="refreshBkLock()">是否开启随机壁纸</button>
+                    <button class="btn btn-success" style="width: 160px;" onclick="refreshBkLock()">是否开启随机壁纸</button>
                     <span class="ml-3" id="bk-status">当前状态：{{ "关闭" if bk_lock else "开启"}}</span>
                 </div>
-                <div class="d-flex align-items-center mb-4">
-                    <button class="btn btn-info" onclick="setSpeed()">更改API请求速度</button>
+                <div class="d-flex align-items-center mb-2">
+                    <button class="btn btn-info" style="width: 160px;" onclick="setSpeed()">更改API请求速度</button>
                     <span class="ml-3">并发：</span>
                     <input type="number" class="form-control ml-2" id="batch-size" placeholder="并发" style="width: 150px;" min="0" value="{{ config.batch_size }}">
                     <span class="ml-3">延时：</span>
                     <input type="number" class="form-control ml-2" id="request-delay" placeholder="延时" style="width: 150px;" step="0.1" min="0" value="{{ config.request_delay }}">
                 </div>
+                <div class="mb-4">
+                    <button class="btn btn-outline-success" style="width: 160px;" type="button" data-toggle="collapse" data-target="#apiKeyCollapse" aria-expanded="false" aria-controls="apiKeyCollapse">
+                        威胁情报Key
+                    </button>
+
+                    <div class="collapse mt-2" id="apiKeyCollapse">
+                        <div class="card card-body" style="background-color: rgb(255, 255, 255, 0.5);">
+                            <div class="form-group">
+                                <label for="qax-apiKeyInput">请输入API Key，对接奇安信威胁情报，可选</label>
+                                <input type="text" id="qax-apiKeyInput" value="{{ qax_ti_key if qax_ti_key else '' }}" class="form-control mt-1" placeholder="API Key">
+                            </div>
+                            <div class="form-group">
+                                <label for="weibu-apiKeyInput">请输入API Key，对接微步威胁情报，可选</label>
+                                <input type="text" id="weibu-apiKeyInput" value="{{ weibu_api_key if weibu_api_key else '' }}" class="form-control mt-1" placeholder="没写（没有微步API）" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
             <div class="col-md-12 text-center">
 
-                <div class="form-group">
-                    <label for="apiKeyInput">请输入API Key，对接奇安信威胁情报，可选</label>
-                    <input type="text" id="apiKeyInput" value="{{ qax_ti_key if qax_ti_key else '' }}" class="form-control mt-1" placeholder="API Key">
-                </div>
-                <div class="form-group">
-                    <label for="ipInput">请输入IP，必填</label>
-                    <div class="custom-control custom-checkbox text-left">
-                        <input type="checkbox" class="custom-control-input" id="autoEnter">
-                        <label class="custom-control-label" for="autoEnter">粘贴后自动加一个回车</label>
+
+
+                <div class="form-group mt-3">
+                    <h4>请输入IP，必填</h4>
+                    <div class="d-flex align-items-center">
+                        <div class="custom-control custom-checkbox align-self-end" style="">
+                            <input type="checkbox" class="custom-control-input" id="autoEnter">
+                            <label class="custom-control-label" for="autoEnter">粘贴后自动加一个回车</label>
+                        </div>
+
+                        <div class="d-inline-block ml-auto" style="position: relative;">
+                            <span><small>目前为：</small><span id="now-decollator" style="font-weight: bold;">{{ config.decollator|show_invisible }}</span></span>
+                            <input type="text" id="decollatorInput" class="form-control" style="width: 250px; position: relative; top: 2px;" placeholder="IP分隔符，默认为 , ">
+                        </div>
                     </div>
-                    <textarea id="ipInput" class="form-control mt-3" rows="10" placeholder="每行IP以,分割例如:192.168.1.1,192.168.1.2，可传入多行"></textarea>
+                    <textarea id="ipInput" class="form-control mt-3" rows="10" placeholder="每行IP以指定分割符（默认为 , ）分割，可传入多行。例如：&#10;192.168.1.1,192.168.1.2&#10;192.168.1.3"></textarea>
                 </div>
                 <button class="btn btn-info mt-2 mb-4" id="ip-submit" onclick="submitIPs()">提交</button>
 
@@ -230,7 +257,7 @@
                             <button class="btn btn-outline-primary" onclick="copySelectedIPs()">复制选择IP</button>
                             <button class="btn btn-outline-primary" onclick="copyAllIPs()">复制所有IP</button>
                             <div class="d-inline-block" style="position: relative;">
-                                <input type="text" id="delimiterInput" class="form-control" style="width: 200px; position: relative; top: 2px;" placeholder="分隔符，默认为\n">
+                                <input type="text" id="delimiterInput" class="form-control" style="width: 220px; position: relative; top: 2px;" placeholder="复制分隔符，默认为\n">
                             </div>
                         </div>
                     <pre id="result"></pre>
@@ -287,6 +314,7 @@
             }
         }
         var ipsInfoRecently;
+        // 用于保存模态框2原始内容的变量
         var originalJsonData = '';
         document.getElementById('ipInput').addEventListener('paste', function (event) {
             var autoEnterChecked = document.getElementById('autoEnter').checked;
@@ -324,8 +352,29 @@
         $('#inputJsonModal').modal('hide');
     }
 
+    function showInvisible(value) {
+        var invisibleChars = {
+            ' ': '<空格>',
+            '\t': '<制表符>',
+            '\n': '<换行符>',
+            '\r': '<回车符>',
+            '\x0b': '<垂直制表符>',
+            '\x0c': '<换页符>'
+        };
+        return value.replace(/[\s\t\n\r\x0b\x0c]/g, function(char) {
+            return invisibleChars[char] || char;
+        });
+    }
         function submitIPs() {
-            var apiKey = document.getElementById('apiKeyInput').value;
+            var qaxApiKey = document.getElementById('qax-apiKeyInput').value;
+            var weibuApiKey = document.getElementById('weibu-apiKeyInput').value;
+            var decollator = document.getElementById('decollatorInput').value;
+
+            var apiKeys = {
+                'qax': qaxApiKey,
+                'weibu': weibuApiKey
+            };
+
             var ipInput = document.getElementById('ipInput').value;
             var base64Data = btoa(ipInput);
             var aMsg = Qmsg.loading({
@@ -337,9 +386,9 @@
                 method: 'POST',
                 contentType: 'application/json',
                 headers: {
-                    'x-qax-key': apiKey,
+                    'x-api-keys': JSON.stringify(apiKeys)
                 },
-                data: JSON.stringify({ data: base64Data }),
+                data: JSON.stringify({ decollator: decollator, data: base64Data }),
                 success: function(response) {
                     aMsg.close();
                     if(!response.status){
@@ -350,6 +399,11 @@
                     }else{
                         displayResult(response.data);
                         ipsInfoRecently = response.data;
+                        if (decollator){
+                            var decollatorSpan = document.getElementById('now-decollator');
+                            decollatorSpan.textContent = showInvisible(decollator);
+                        }
+
                     }
 
                 },
@@ -403,12 +457,12 @@
 
                         var summaryInfo = qaxTi.summary_info || {};
                         var summaryHtml = '<div class="indent-2">' +
-                                          '- IP基础设施标签: ' + (summaryInfo.ip_infrastructure_label.length ? summaryInfo.ip_infrastructure_label.join(', ') : 'N/A') + '<br>' +
-                                          '- IP服务良性标签: ' + (summaryInfo.ipservice_benign_label.length ? summaryInfo.ipservice_benign_label.join(', ') : 'N/A') + '<br>' +
-                                          '- IP服务未知标签: ' + (summaryInfo.ipservice_unknown_label.length ? summaryInfo.ipservice_unknown_label.join(', ') : 'N/A') + '<br>' +
-                                          '- 最新声誉时间: ' + (summaryInfo.latest_reputation_time || 'N/A') + '<br>' +
-                                          '- 恶意标签: ' + (summaryInfo.malicious_label.length ? summaryInfo.malicious_label.join(', ') : 'N/A') + '<br>' +
-                                          '- 声誉: ' + (summaryInfo.reputation || 'N/A') +
+                                          '- QAX-IP基础设施标签: ' + (summaryInfo.ip_infrastructure_label.length ? summaryInfo.ip_infrastructure_label.join(', ') : 'N/A') + '<br>' +
+                                          '- QAX-IP服务良性标签: ' + (summaryInfo.ipservice_benign_label.length ? summaryInfo.ipservice_benign_label.join(', ') : 'N/A') + '<br>' +
+                                          '- QAX-IP服务未知标签: ' + (summaryInfo.ipservice_unknown_label.length ? summaryInfo.ipservice_unknown_label.join(', ') : 'N/A') + '<br>' +
+                                          '- QAX-最新声誉时间: ' + (summaryInfo.latest_reputation_time || 'N/A') + '<br>' +
+                                          '- QAX-恶意标签: ' + (summaryInfo.malicious_label.length ? summaryInfo.malicious_label.join(', ') : 'N/A') + '<br>' +
+                                          '- QAX-声誉: ' + (summaryInfo.reputation || 'N/A') +
                                           '</div>';
                         qaxTiEntry.innerHTML += summaryHtml;
                         ipEntry.appendChild(qaxTiEntry);
@@ -526,9 +580,9 @@
             var delimiterInput = document.getElementById('delimiterInput').value || '\n';
 
             return delimiterInput
-                .replace(/\\n/g, '\n')  // 替换 \n 为实际的换行符
-                .replace(/\\t/g, '\t')  // 替换 \t 为制表符
-                .replace(/\\r/g, '\r'); // 替换 \r 为回车符
+                .replace(/\\n/g, '\n')
+                .replace(/\\t/g, '\t')
+                .replace(/\\r/g, '\r');
         }
 
         function copyNonWhitelistIPs() {

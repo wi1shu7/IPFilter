@@ -19,7 +19,7 @@ class test(_BaseRequestClass):
         "status": 0或者1,1代表请求成功，0代表失败,
         "message": 在前端展示的信息,
         "error": 如果发送失败，在前端展示的信息,
-        "data": 需要往前端发送的数据
+        "data": 需要往前端发送的数据（目前未应用）
     }
     """
     def __init__(self):
